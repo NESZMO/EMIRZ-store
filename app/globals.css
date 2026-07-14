@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg: oklch(14% 0.02 150);
+  --color-panel: oklch(19% 0.02 150);
+  --color-sidebar: oklch(16% 0.02 150);
+  --color-field: oklch(16% 0.02 150);
+  --color-hover: oklch(23% 0.02 150);
+  --color-line: oklch(26% 0.02 150);
+  --color-line-soft: oklch(23% 0.02 150);
+  --color-line-strong: oklch(28% 0.02 150);
+
+  --color-text: oklch(96% 0.01 150);
+  --color-text-soft: oklch(90% 0.01 150);
+  --color-text-dim: oklch(80% 0.01 150);
+  --color-muted: oklch(65% 0.02 150);
+  --color-muted-2: oklch(60% 0.02 150);
+  --color-muted-3: oklch(58% 0.02 150);
+  --color-muted-4: oklch(55% 0.02 150);
+  --color-muted-5: oklch(50% 0.02 150);
+  --color-muted-6: oklch(48% 0.02 150);
+  --color-muted-7: oklch(45% 0.02 150);
+
+  --color-primary: oklch(58% 0.14 150);
+  --color-primary-soft: oklch(24% 0.06 150);
+  --color-gold: oklch(75% 0.14 85);
+  --color-danger: oklch(65% 0.16 25);
+  --color-danger-soft: oklch(62% 0.16 25);
+  --color-warning: oklch(78% 0.13 55);
+
+  --color-receipt-bg: oklch(97% 0.005 150);
+  --color-receipt-text: oklch(18% 0.01 150);
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-panel: var(--color-panel);
+  --color-sidebar: var(--color-sidebar);
+  --color-field: var(--color-field);
+  --color-hover: var(--color-hover);
+  --color-line: var(--color-line);
+  --color-line-soft: var(--color-line-soft);
+  --color-line-strong: var(--color-line-strong);
+
+  --color-text: var(--color-text);
+  --color-text-soft: var(--color-text-soft);
+  --color-text-dim: var(--color-text-dim);
+  --color-muted: var(--color-muted);
+  --color-muted-2: var(--color-muted-2);
+  --color-muted-3: var(--color-muted-3);
+  --color-muted-4: var(--color-muted-4);
+  --color-muted-5: var(--color-muted-5);
+  --color-muted-6: var(--color-muted-6);
+  --color-muted-7: var(--color-muted-7);
+
+  --color-primary: var(--color-primary);
+  --color-primary-soft: var(--color-primary-soft);
+  --color-gold: var(--color-gold);
+  --color-danger: var(--color-danger);
+  --color-danger-soft: var(--color-danger-soft);
+  --color-warning: var(--color-warning);
+
+  --color-receipt-bg: var(--color-receipt-bg);
+  --color-receipt-text: var(--color-receipt-text);
+
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-space-grotesk);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans), sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 4px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-muted-5);
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
