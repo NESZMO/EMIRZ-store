@@ -7,10 +7,13 @@ import { useRealtimeTable } from "@/lib/hooks/useRealtimeTable";
 import { useSalesWithItems } from "@/lib/hooks/useSalesWithItems";
 import { PageHeader } from "@/components/PageHeader";
 import { ReceiptModal } from "@/components/modals/ReceiptModal";
+import { SalesHistoryModal } from "@/components/modals/SalesHistoryModal";
+import { EditSaleModal } from "@/components/modals/EditSaleModal";
 import { buildReceipt, type ReceiptData } from "@/lib/receipt";
 import { isLowStock, crateOutstanding, isToday, lastNDays, isSameDay, saleProfit, itemsSummary } from "@/lib/domain";
 import { fmtTime } from "@/lib/format";
 import type { ProductRow, CrateRecordRow, PendingPaymentRow, IncomingStockRow } from "@/lib/database.types";
+import type { SaleWithItems } from "@/lib/hooks/useSalesWithItems";
 import { cardClass, primaryBtnClass, ghostBtnClass } from "@/lib/ui";
 
 function StatCard({ label, value, color, onClick }: { label: string; value: string; color: string; onClick?: () => void }) {
@@ -39,6 +42,8 @@ export default function DashboardPage() {
   const { rows: payments } = useRealtimeTable<PendingPaymentRow>("pending_payments", storeId);
   const { rows: incoming } = useRealtimeTable<IncomingStockRow>("incoming_stock", storeId);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [editingSale, setEditingSale] = useState<SaleWithItems | null>(null);
 
   const todaySales = useMemo(() => sales.filter((s) => isToday(s.created_at)), [sales]);
   const totalRevenueToday = useMemo(() => todaySales.reduce((a, s) => a + s.grand_total, 0), [todaySales]);
@@ -65,7 +70,7 @@ export default function DashboardPage() {
     { label: tt("statTotalProducts"), value: String(products.length), color: "var(--color-primary)", onClick: () => router.push("/inventory") },
     { label: tt("statTotalCrates"), value: String(totalCratedQty), color: "var(--color-gold)", onClick: () => router.push("/inventory") },
     { label: tt("statTotalBoxedCans"), value: String(totalBoxedQty), color: "var(--color-primary)", onClick: () => router.push("/inventory") },
-    { label: tt("statTodaysSales"), value: String(todaySales.length), color: "var(--color-gold)", onClick: () => router.push("/sales") },
+    { label: tt("statTodaysSales"), value: String(todaySales.length), color: "var(--color-gold)", onClick: () => setShowHistory(true) },
     { label: tt("statPendingPayments"), value: fmt(pendingBalance), color: "var(--color-warning)", onClick: () => router.push("/payments") },
     { label: tt("statOutstandingCrates"), value: String(outstandingCrateCount), color: "var(--color-gold)", onClick: () => router.push("/crates") },
     { label: tt("statLowStock"), value: String(lowStockCount), color: "var(--color-danger)", onClick: () => router.push("/inventory") },
@@ -182,12 +187,14 @@ export default function DashboardPage() {
                     {tx.balance > 0 ? `${fmt(tx.balance)} ${tt("dueSuffix")}` : tt("paidInFull")}
                   </div>
                 </div>
-                <button
-                  onClick={() => setReceipt(buildReceipt(tx, fmt))}
-                  className="ml-4 text-xs font-bold text-gold cursor-pointer shrink-0"
-                >
-                  {tt("receiptLink")}
-                </button>
+                <div className="flex gap-2.5 ml-4 shrink-0">
+                  <button onClick={() => setReceipt(buildReceipt(tx, fmt))} className="text-xs font-bold text-gold cursor-pointer">
+                    {tt("receiptLink")}
+                  </button>
+                  <button onClick={() => setEditingSale(tx)} className="text-xs font-bold text-primary cursor-pointer">
+                    {tt("edit")}
+                  </button>
+                </div>
               </div>
             ))
           )}
@@ -219,6 +226,24 @@ export default function DashboardPage() {
       </div>
 
       {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
+
+      {showHistory && (
+        <SalesHistoryModal
+          sales={sales}
+          onClose={() => setShowHistory(false)}
+          onViewReceipt={(sale) => setReceipt(buildReceipt(sale, fmt))}
+          onEditSale={(sale) => setEditingSale(sale)}
+        />
+      )}
+
+      {editingSale && (
+        <EditSaleModal
+          sale={editingSale}
+          products={products}
+          cratePerUnit={store?.crate_deposit_per_unit ?? 500}
+          onClose={() => setEditingSale(null)}
+        />
+      )}
     </div>
   );
 }

@@ -4,10 +4,10 @@ import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store-context";
 import { useUndo } from "@/lib/undo-context";
 import { useRealtimeTable } from "@/lib/hooks/useRealtimeTable";
-import { createClient } from "@/lib/supabase/client";
+import { createPayment, updatePayment } from "@/lib/actions/payments";
 import { PageHeader } from "@/components/PageHeader";
 import { fieldClass, primaryBtnClass, ghostBtnClass, cardClass } from "@/lib/ui";
-import type { PendingPaymentRow } from "@/lib/database.types";
+import type { PaymentStatus, PendingPaymentRow } from "@/lib/database.types";
 
 const EMPTY_FORM = { customer: "", phone: "", products: "", total: "", paid: "", dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10) };
 
@@ -15,7 +15,6 @@ export default function PaymentsPage() {
   const { store, tt, fmt } = useStore();
   const { push } = useUndo();
   const storeId = store?.id;
-  const supabase = useMemo(() => createClient(), []);
   const { rows: payments } = useRealtimeTable<PendingPaymentRow>("pending_payments", storeId);
 
   const [search, setSearch] = useState("");
@@ -39,9 +38,8 @@ export default function PaymentsPage() {
     if (total <= 0) return;
     const paid = Number(draft.paid) || 0;
     const balance = Math.max(0, total - paid);
-    const status = balance <= 0 ? "Paid" : paid > 0 ? "Partial" : "Unpaid";
-    await supabase.from("pending_payments").insert({
-      store_id: storeId,
+    const status: PaymentStatus = balance <= 0 ? "Paid" : paid > 0 ? "Partial" : "Unpaid";
+    await createPayment({
       customer: draft.customer,
       phone: draft.phone,
       products_text: draft.products,
@@ -62,13 +60,13 @@ export default function PaymentsPage() {
     const prevStatus = r.status;
     const paid = r.paid + extra;
     const balance = Math.max(0, r.total - paid);
-    const status = balance <= 0 ? "Paid" : "Partial";
-    await supabase.from("pending_payments").update({ paid, balance, status }).eq("id", r.id);
+    const status: PaymentStatus = balance <= 0 ? "Paid" : "Partial";
+    await updatePayment(r.id, { paid, balance, status });
     setAmountInputs((a) => ({ ...a, [r.id]: "" }));
     push({
       label: `payment ${r.customer}`,
-      undo: () => supabase.from("pending_payments").update({ paid: prevPaid, balance: prevBalance, status: prevStatus }).eq("id", r.id),
-      redo: () => supabase.from("pending_payments").update({ paid, balance, status }).eq("id", r.id),
+      undo: () => updatePayment(r.id, { paid: prevPaid, balance: prevBalance, status: prevStatus }),
+      redo: () => updatePayment(r.id, { paid, balance, status }),
     });
   }
 
@@ -76,11 +74,11 @@ export default function PaymentsPage() {
     const prevPaid = r.paid;
     const prevBalance = r.balance;
     const prevStatus = r.status;
-    await supabase.from("pending_payments").update({ paid: r.total, balance: 0, status: "Paid" }).eq("id", r.id);
+    await updatePayment(r.id, { paid: r.total, balance: 0, status: "Paid" });
     push({
       label: `mark paid ${r.customer}`,
-      undo: () => supabase.from("pending_payments").update({ paid: prevPaid, balance: prevBalance, status: prevStatus }).eq("id", r.id),
-      redo: () => supabase.from("pending_payments").update({ paid: r.total, balance: 0, status: "Paid" }).eq("id", r.id),
+      undo: () => updatePayment(r.id, { paid: prevPaid, balance: prevBalance, status: prevStatus }),
+      redo: () => updatePayment(r.id, { paid: r.total, balance: 0, status: "Paid" }),
     });
   }
 

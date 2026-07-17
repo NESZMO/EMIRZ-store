@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store-context";
-import { createClient } from "@/lib/supabase/client";
 import type { TranslationKey } from "@/lib/i18n";
 
 const NAV_ITEMS: { href: string; labelKey: TranslationKey }[] = [
@@ -23,8 +22,7 @@ export function Sidebar() {
   const { profile, tt } = useStore();
 
   async function onLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
   }

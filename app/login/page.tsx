@@ -2,13 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { EyeIcon } from "@/components/icons/EyeIcon";
 import { fieldClass, primaryBtnClass } from "@/lib/ui";
-
-function usernameToEmail(username: string) {
-  return `${username.trim().toLowerCase()}@emirz.local`;
-}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,13 +20,13 @@ export default function LoginPage() {
     if (!username.trim() || !password) return;
     setBusy(true);
     setMsg("");
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email: usernameToEmail(username),
-      password,
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, rememberMe }),
     });
     setBusy(false);
-    if (error) {
+    if (!res.ok) {
       setMsg("Incorrect username or password. Try again.");
       return;
     }
@@ -40,7 +35,7 @@ export default function LoginPage() {
   }
 
   function onForgotPassword() {
-    setHint("Ask your manager to reset your password from the Supabase dashboard (Authentication → Users).");
+    setHint("Ask your manager to reset it in Settings, or use the default install login: manager / emirz123");
   }
 
   return (

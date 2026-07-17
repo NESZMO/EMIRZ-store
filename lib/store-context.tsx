@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { subscribeToChanges } from "@/lib/client-events";
 import { t, type TranslationKey } from "@/lib/i18n";
 import type { ProfileRow, StoreRow } from "@/lib/database.types";
 
@@ -17,57 +17,35 @@ interface StoreContextValue {
 const StoreContext = createContext<StoreContextValue | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const supabase = useMemo(() => createClient(), []);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [store, setStore] = useState<StoreRow | null>(null);
 
   const load = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    const res = await fetch("/api/session", { cache: "no-store" });
+    if (!res.ok) {
       setProfile(null);
       setStore(null);
       setLoading(false);
       return;
     }
-    const { data: profileRow } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-    if (profileRow) {
-      setProfile(profileRow);
-      const { data: storeRow } = await supabase
-        .from("stores")
-        .select("*")
-        .eq("id", profileRow.store_id)
-        .single();
-      setStore(storeRow ?? null);
-    }
+    const data = await res.json();
+    setProfile({ ...data.user, created_at: "" });
+    setStore(data.store);
     setLoading(false);
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
   useEffect(() => {
-    if (!store) return;
-    const channel = supabase
-      .channel(`store-${store.id}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "stores", filter: `id=eq.${store.id}` },
-        (payload) => setStore(payload.new as StoreRow),
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store?.id]);
+    return subscribeToChanges(async (table) => {
+      if (table !== "stores") return;
+      const res = await fetch("/api/stores", { cache: "no-store" });
+      if (res.ok) setStore(await res.json());
+    });
+  }, []);
 
   const value = useMemo<StoreContextValue>(
     () => ({

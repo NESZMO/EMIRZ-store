@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store-context";
 import { useUndo } from "@/lib/undo-context";
 import { useRealtimeTable } from "@/lib/hooks/useRealtimeTable";
-import { createClient } from "@/lib/supabase/client";
+import { createProduct, updateProduct, deleteProduct as deleteProductAction, recreateProduct } from "@/lib/actions/products";
 import { PageHeader } from "@/components/PageHeader";
 import { fieldClass, primaryBtnClass, ghostBtnClass, cardClass } from "@/lib/ui";
 import { isLowStock } from "@/lib/domain";
@@ -17,8 +17,7 @@ export default function InventoryPage() {
   const { store, profile, tt, fmt } = useStore();
   const { push } = useUndo();
   const storeId = store?.id;
-  const { rows: products } = useRealtimeTable<ProductRow>("products", storeId, { orderBy: "date_added", ascending: false });
-  const supabase = useMemo(() => createClient(), []);
+  const { rows: products } = useRealtimeTable<ProductRow>("products", storeId);
   const isManager = profile?.role === "manager";
 
   const [tab, setTab] = useState<Category>("Crated");
@@ -74,9 +73,9 @@ export default function InventoryPage() {
       min_stock: Number(draft.minStock) || 0,
     };
     if (mode === "edit" && targetId) {
-      await supabase.from("products").update(payload).eq("id", targetId);
+      await updateProduct(targetId, payload);
     } else {
-      await supabase.from("products").insert({ ...payload, store_id: storeId, date_added: todayISO() });
+      await createProduct({ ...payload, date_added: todayISO() });
     }
     setShowForm(false);
   }
@@ -84,33 +83,20 @@ export default function InventoryPage() {
   async function adjustQty(p: ProductRow, delta: number) {
     const prevQty = p.qty;
     const nextQty = Math.max(0, p.qty + delta);
-    await supabase.from("products").update({ qty: nextQty }).eq("id", p.id);
+    await updateProduct(p.id, { qty: nextQty });
     push({
       label: `qty ${p.name}`,
-      undo: () => supabase.from("products").update({ qty: prevQty }).eq("id", p.id),
-      redo: () => supabase.from("products").update({ qty: nextQty }).eq("id", p.id),
+      undo: () => updateProduct(p.id, { qty: prevQty }),
+      redo: () => updateProduct(p.id, { qty: nextQty }),
     });
   }
 
   async function deleteProduct(p: ProductRow) {
-    await supabase.from("products").delete().eq("id", p.id);
+    await deleteProductAction(p.id);
     push({
       label: `delete ${p.name}`,
-      undo: () =>
-        supabase.from("products").insert({
-          id: p.id,
-          store_id: p.store_id,
-          name: p.name,
-          brand: p.brand,
-          category: p.category,
-          supplier: p.supplier,
-          buy_price: p.buy_price,
-          sell_price: p.sell_price,
-          qty: p.qty,
-          min_stock: p.min_stock,
-          date_added: p.date_added,
-        }),
-      redo: () => supabase.from("products").delete().eq("id", p.id),
+      undo: () => recreateProduct(p),
+      redo: () => deleteProductAction(p.id),
     });
   }
 

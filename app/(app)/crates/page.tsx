@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store-context";
 import { useUndo } from "@/lib/undo-context";
 import { useRealtimeTable } from "@/lib/hooks/useRealtimeTable";
-import { createClient } from "@/lib/supabase/client";
+import { createCrateRecord, updateCrateRecord } from "@/lib/actions/crates";
 import { PageHeader } from "@/components/PageHeader";
 import { fieldClass, primaryBtnClass, ghostBtnClass, cardClass } from "@/lib/ui";
 import { crateOutstanding } from "@/lib/domain";
@@ -16,7 +16,6 @@ export default function CratesPage() {
   const { store, tt, fmt } = useStore();
   const { push } = useUndo();
   const storeId = store?.id;
-  const supabase = useMemo(() => createClient(), []);
   const { rows: crates } = useRealtimeTable<CrateRecordRow>("crate_records", storeId);
   const { rows: products } = useRealtimeTable<ProductRow>("products", storeId);
   const cratedProducts = useMemo(() => products.filter((p) => p.category === "Crated"), [products]);
@@ -55,18 +54,16 @@ export default function CratesPage() {
     const status: CrateStatus = Math.max(0, taken - returned) === 0 ? "Cleared" : "Outstanding";
     const product = cratedProducts.find((p) => p.name === draft.product);
     if (mode === "edit" && targetId) {
-      const payload: Partial<CrateRecordRow> = {
+      await updateCrateRecord(targetId, {
         customer: draft.customer,
         product_name_snapshot: draft.product,
         product_id: product?.id ?? null,
         taken,
         returned,
         status,
-      };
-      await supabase.from("crate_records").update(payload).eq("id", targetId);
+      });
     } else {
-      await supabase.from("crate_records").insert({
-        store_id: storeId,
+      await createCrateRecord({
         customer: draft.customer,
         product_name_snapshot: draft.product,
         product_id: product?.id ?? null,
@@ -84,13 +81,12 @@ export default function CratesPage() {
     if (qty <= 0) return;
     const prevReturned = returnTarget.returned;
     const nextReturned = Math.min(returnTarget.taken, returnTarget.returned + qty);
-    const status = Math.max(0, returnTarget.taken - nextReturned) === 0 ? "Cleared" : "Outstanding";
-    await supabase.from("crate_records").update({ returned: nextReturned, status }).eq("id", returnTarget.id);
+    const status: CrateStatus = Math.max(0, returnTarget.taken - nextReturned) === 0 ? "Cleared" : "Outstanding";
+    await updateCrateRecord(returnTarget.id, { returned: nextReturned, status });
     push({
       label: `return ${returnTarget.customer}`,
-      undo: () =>
-        supabase.from("crate_records").update({ returned: prevReturned, status: "Outstanding" }).eq("id", returnTarget.id),
-      redo: () => supabase.from("crate_records").update({ returned: nextReturned, status }).eq("id", returnTarget.id),
+      undo: () => updateCrateRecord(returnTarget.id, { returned: prevReturned, status: "Outstanding" }),
+      redo: () => updateCrateRecord(returnTarget.id, { returned: nextReturned, status }),
     });
     setReturnTarget(null);
     setReturnQty("");

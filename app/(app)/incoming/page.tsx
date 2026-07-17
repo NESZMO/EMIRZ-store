@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useStore } from "@/lib/store-context";
 import { useRealtimeTable } from "@/lib/hooks/useRealtimeTable";
-import { createClient } from "@/lib/supabase/client";
+import { receiveStock } from "@/lib/actions/incoming";
 import { PageHeader } from "@/components/PageHeader";
 import { fieldClass, primaryBtnClass, ghostBtnClass, cardClass } from "@/lib/ui";
 import { todayISO } from "@/lib/format";
@@ -14,7 +14,6 @@ const EMPTY_FORM = { supplier: "", invoiceNo: "", product: "", category: "Crated
 export default function IncomingPage() {
   const { store, tt, fmt } = useStore();
   const storeId = store?.id;
-  const supabase = useMemo(() => createClient(), []);
   const { rows: incoming } = useRealtimeTable<IncomingStockRow>("incoming_stock", storeId);
   const { rows: products } = useRealtimeTable<ProductRow>("products", storeId);
 
@@ -37,8 +36,7 @@ export default function IncomingPage() {
     const product = products.find((p) => p.name === draft.product);
     if (!product) return;
 
-    await supabase.from("incoming_stock").insert({
-      store_id: storeId,
+    await receiveStock({
       supplier: draft.supplier,
       invoice_no: draft.invoiceNo,
       product_id: product.id,
@@ -49,7 +47,6 @@ export default function IncomingPage() {
       delivery_date: draft.deliveryDate || todayISO(),
       notes: draft.notes,
     });
-    await supabase.from("products").update({ qty: product.qty + qty }).eq("id", product.id);
     setShowForm(false);
   }
 

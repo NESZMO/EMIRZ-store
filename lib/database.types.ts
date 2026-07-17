@@ -99,6 +99,7 @@ export interface CrateRecordRow {
 export interface PendingPaymentRow {
   id: string;
   store_id: string;
+  sale_id: string | null;
   customer: string;
   phone: string;
   products_text: string;
@@ -110,7 +111,6 @@ export interface PendingPaymentRow {
   created_at: string;
 }
 
-// NOTE: These Row interfaces are used to type data read from Supabase (cast
-// at each call site, e.g. `data as ProductRow[]`). The Supabase clients
-// (lib/supabase/client.ts, server.ts) are intentionally NOT parameterized
-// with a generated Database type — see the comment in client.ts for why.
+// NOTE: These Row interfaces describe the SQLite schema (lib/db.ts) and are
+// used to type data read from the /api/* Route Handlers (cast at each call
+// site, e.g. `data as ProductRow[]`).

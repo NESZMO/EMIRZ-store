@@ -11,10 +11,12 @@ export function SalesHistoryModal({
   sales,
   onClose,
   onViewReceipt,
+  onEditSale,
 }: {
   sales: SaleWithItems[];
   onClose: () => void;
   onViewReceipt: (sale: SaleWithItems) => void;
+  onEditSale?: (sale: SaleWithItems) => void;
 }) {
   const { tt, fmt, store } = useStore();
   const today = useMemo(() => new Date(), []);
@@ -130,6 +132,11 @@ export function SalesHistoryModal({
                       <button onClick={() => onViewReceipt(tx)} className="text-[11.5px] font-bold text-gold cursor-pointer">
                         {tt("receiptLink")}
                       </button>
+                      {onEditSale && (
+                        <button onClick={() => onEditSale(tx)} className="text-[11.5px] font-bold text-primary cursor-pointer">
+                          {tt("edit")}
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store-context";
 import { useRealtimeTable } from "@/lib/hooks/useRealtimeTable";
 import { useSalesWithItems, type SaleWithItems } from "@/lib/hooks/useSalesWithItems";
-import { createClient } from "@/lib/supabase/client";
+import { completeSale } from "@/lib/actions/sales";
 import { PageHeader } from "@/components/PageHeader";
 import { ReceiptModal } from "@/components/modals/ReceiptModal";
 import { CrateConfirmModal } from "@/components/modals/CrateConfirmModal";
 import { SalesHistoryModal } from "@/components/modals/SalesHistoryModal";
+import { EditSaleModal } from "@/components/modals/EditSaleModal";
 import { fieldClass, primaryBtnClass, ghostBtnClass, cardClass } from "@/lib/ui";
 import { buildReceipt, type ReceiptData } from "@/lib/receipt";
 import type { ProductRow } from "@/lib/database.types";
@@ -19,9 +20,8 @@ interface CartLine {
 }
 
 export default function SalesPage() {
-  const { store, profile, tt, fmt } = useStore();
+  const { store, tt, fmt } = useStore();
   const storeId = store?.id;
-  const supabase = useMemo(() => createClient(), []);
   const { rows: products } = useRealtimeTable<ProductRow>("products", storeId);
   const { sales } = useSalesWithItems(storeId);
 
@@ -34,6 +34,7 @@ export default function SalesPage() {
   const [crateModal, setCrateModal] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [editingSale, setEditingSale] = useState<SaleWithItems | null>(null);
   const [busy, setBusy] = useState(false);
 
   const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
@@ -117,79 +118,22 @@ export default function SalesPage() {
     setBusy(true);
     setCrateModal(false);
 
-    const cratePerUnit = store?.crate_deposit_per_unit ?? 500;
-    const crateCharge = crateUnits * cratePerUnit;
-    const grandTotal = subtotal - discountAmt + crateCharge;
-    const paid = paidNum;
-    const balance = grandTotal - paid;
-    const finalCustomerName = customerName.trim() || "Walk-in Customer";
-    const cashierName = profile?.display_name || profile?.username || "";
+    const completedSale: SaleWithItems = await completeSale({
+      customerName,
+      discountPct: Number(discountPct) || 0,
+      amountPaid: paidNum,
+      crateUnits,
+      cartLines: cartLines.map((l) => ({
+        productId: l.product.id,
+        name: l.product.name,
+        category: l.product.category,
+        unitPrice: l.product.sell_price,
+        buyPrice: l.product.buy_price,
+        qty: l.qty,
+        lineTotal: l.lineTotal,
+      })),
+    });
 
-    const { data: sale, error } = await supabase
-      .from("sales")
-      .insert({
-        store_id: storeId,
-        customer_name: finalCustomerName,
-        cashier_id: profile?.id,
-        cashier_name_snapshot: cashierName,
-        subtotal,
-        crate_charge: crateCharge,
-        discount_pct: Number(discountPct) || 0,
-        discount_amount: discountAmt,
-        grand_total: grandTotal,
-        amount_paid: paid,
-        balance,
-      })
-      .select()
-      .single();
-
-    if (error || !sale) {
-      setBusy(false);
-      return;
-    }
-
-    const itemRows = cartLines.map((l) => ({
-      sale_id: sale.id,
-      product_id: l.product.id,
-      name_snapshot: l.product.name,
-      category_snapshot: l.product.category,
-      unit_price: l.product.sell_price,
-      buy_price_snapshot: l.product.buy_price,
-      qty: l.qty,
-      line_total: l.lineTotal,
-    }));
-    const { data: insertedItems } = await supabase.from("sale_items").insert(itemRows).select();
-
-    await Promise.all(cartLines.map((l) => supabase.from("products").update({ qty: Math.max(0, l.product.qty - l.qty) }).eq("id", l.product.id)));
-
-    const cratedLines = cartLines.filter((l) => l.product.category === "Crated");
-    if (crateUnits > 0) {
-      await supabase.from("crate_records").insert({
-        store_id: storeId,
-        customer: finalCustomerName,
-        product_id: cratedLines.length === 1 ? cratedLines[0].product.id : null,
-        product_name_snapshot: cratedLines.length > 1 ? "Mixed crates" : cratedLines[0]?.product.name ?? "Crates",
-        taken: crateUnits,
-        returned: 0,
-        status: "Outstanding",
-      });
-    }
-
-    if (balance > 0) {
-      await supabase.from("pending_payments").insert({
-        store_id: storeId,
-        customer: finalCustomerName,
-        phone: "",
-        products_text: cartLines.map((l) => `${l.qty}× ${l.product.name}`).join(", "),
-        total: grandTotal,
-        paid,
-        balance,
-        status: paid > 0 ? "Partial" : "Unpaid",
-        due_date: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-      });
-    }
-
-    const completedSale: SaleWithItems = { ...sale, sale_items: insertedItems ?? [] };
     setReceipt(buildReceipt(completedSale, fmt));
     clearCart();
     setSaleJustCompleted(true);
@@ -336,6 +280,16 @@ export default function SalesPage() {
           sales={sales}
           onClose={() => setShowHistory(false)}
           onViewReceipt={(sale) => setReceipt(buildReceipt(sale, fmt))}
+          onEditSale={(sale) => setEditingSale(sale)}
+        />
+      )}
+
+      {editingSale && (
+        <EditSaleModal
+          sale={editingSale}
+          products={products}
+          cratePerUnit={store?.crate_deposit_per_unit ?? 500}
+          onClose={() => setEditingSale(null)}
         />
       )}
     </div>

@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local database (live store data — never commit)
+/data/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

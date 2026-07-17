@@ -1,21 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "@/lib/store-context";
 import { useRealtimeTable } from "@/lib/hooks/useRealtimeTable";
-import { createClient } from "@/lib/supabase/client";
+import { updateStoreInfo, setLanguage as setStoreLanguage, toggleNotifications as toggleStoreNotifications, restoreBackup } from "@/lib/actions/settings";
+import { updatePassword } from "@/lib/actions/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { EyeIcon } from "@/components/icons/EyeIcon";
 import { fieldClass, primaryBtnClass, ghostBtnClass, cardClass, labelClass } from "@/lib/ui";
 import { downloadJSON } from "@/lib/csv";
 import type { CrateRecordRow, IncomingStockRow, PendingPaymentRow, ProfileRow, ProductRow } from "@/lib/database.types";
-import type { SaleWithItems } from "@/lib/hooks/useSalesWithItems";
 import { useSalesWithItems } from "@/lib/hooks/useSalesWithItems";
 
 export default function SettingsPage() {
   const { store, profile, tt } = useStore();
   const storeId = store?.id;
-  const supabase = useMemo(() => createClient(), []);
   const isManager = profile?.role === "manager";
 
   const { rows: products } = useRealtimeTable<ProductRow>("products", storeId);
@@ -27,12 +26,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!storeId) return;
-    supabase
-      .from("profiles")
-      .select("*")
-      .eq("store_id", storeId)
-      .then(({ data }) => setTeammates(data ?? []));
-  }, [supabase, storeId]);
+    fetch("/api/profiles", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setTeammates);
+  }, [storeId]);
 
   const [storeDraft, setStoreDraft] = useState({ name: "", phone: "", address: "", taxRatePct: "" });
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -46,23 +43,20 @@ export default function SettingsPage() {
 
   async function onSaveStoreInfo() {
     if (!storeId) return;
-    await supabase
-      .from("stores")
-      .update({ name: storeDraft.name, phone: storeDraft.phone, address: storeDraft.address, tax_rate_pct: Number(storeDraft.taxRatePct) || 0 })
-      .eq("id", storeId);
+    await updateStoreInfo({ name: storeDraft.name, phone: storeDraft.phone, address: storeDraft.address, tax_rate_pct: Number(storeDraft.taxRatePct) || 0 });
     setStoreMsg(tt("save") + " ✓");
     setTimeout(() => setStoreMsg(""), 2000);
   }
 
   async function onSetLanguage(lang: "en" | "sw") {
     if (!storeId) return;
-    await supabase.from("stores").update({ language: lang }).eq("id", storeId);
+    await setStoreLanguage(lang);
   }
 
   async function onToggleNotifications(checked: boolean) {
     setNotificationsEnabled(checked);
     if (!storeId) return;
-    await supabase.from("stores").update({ notifications_enabled: checked }).eq("id", storeId);
+    await toggleStoreNotifications(checked);
   }
 
   // ---- Password & security ----
@@ -82,18 +76,9 @@ export default function SettingsPage() {
       setPwMsg(tt("pwTooShortMsg"));
       return;
     }
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user?.email) return;
-    const { error: verifyError } = await supabase.auth.signInWithPassword({ email: user.email, password: pwCurrent });
-    if (verifyError) {
+    const result = await updatePassword(pwCurrent, pwNew);
+    if (!result.ok) {
       setPwMsg(tt("pwWrongCurrentMsg"));
-      return;
-    }
-    const { error: updateError } = await supabase.auth.updateUser({ password: pwNew });
-    if (updateError) {
-      setPwMsg(updateError.message);
       return;
     }
     setPwMsg(tt("pwUpdatedMsg"));
@@ -107,7 +92,7 @@ export default function SettingsPage() {
   function onBackupData() {
     const snapshot = {
       products,
-      sales: sales.map((s: SaleWithItems) => s),
+      sales,
       crateRecords: crates,
       incomingHistory: incoming,
       pendingPayments: payments,
@@ -123,18 +108,7 @@ export default function SettingsPage() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (Array.isArray(data.products) && data.products.length > 0) {
-        await supabase.from("products").upsert(data.products.map((p: ProductRow) => ({ ...p, store_id: storeId })));
-      }
-      if (Array.isArray(data.crateRecords) && data.crateRecords.length > 0) {
-        await supabase.from("crate_records").upsert(data.crateRecords.map((c: CrateRecordRow) => ({ ...c, store_id: storeId })));
-      }
-      if (Array.isArray(data.incomingHistory) && data.incomingHistory.length > 0) {
-        await supabase.from("incoming_stock").upsert(data.incomingHistory.map((h: IncomingStockRow) => ({ ...h, store_id: storeId })));
-      }
-      if (Array.isArray(data.pendingPayments) && data.pendingPayments.length > 0) {
-        await supabase.from("pending_payments").upsert(data.pendingPayments.map((p: PendingPaymentRow) => ({ ...p, store_id: storeId })));
-      }
+      await restoreBackup(data);
       setRestoreMessage(tt("restoredMsg"));
     } catch {
       setRestoreMessage(tt("restoreErrorMsg"));
