@@ -138,17 +138,20 @@ function migrate(db: Database.Database) {
     create index if not exists idx_sales_store on sales(store_id);
     create index if not exists idx_sale_items_sale on sale_items(sale_id);
     create index if not exists idx_crates_store on crate_records(store_id);
-    create index if not exists idx_crates_sale on crate_records(sale_id);
     create index if not exists idx_payments_store on pending_payments(store_id);
     create index if not exists idx_payments_sale on pending_payments(sale_id);
   `);
 
   // Installs created before crate_records had a sale_id column need it added
   // in place — "create table if not exists" above only affects brand-new DBs.
+  // Must run before the idx_crates_sale index below, which needs the column
+  // to exist first.
   const crateColumns = db.prepare("pragma table_info(crate_records)").all() as { name: string }[];
   if (!crateColumns.some((c) => c.name === "sale_id")) {
     db.exec("alter table crate_records add column sale_id text references sales(id)");
   }
+
+  db.exec("create index if not exists idx_crates_sale on crate_records(sale_id)");
 }
 
 function seed(db: Database.Database) {

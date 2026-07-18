@@ -27,7 +27,11 @@ export default function LoginPage() {
     });
     setBusy(false);
     if (!res.ok) {
-      setMsg("Incorrect username or password. Try again.");
+      if (res.status === 401) {
+        setMsg("Incorrect username or password. Try again.");
+      } else {
+        setMsg(`Something went wrong on the server (error ${res.status}). Check the terminal window for details.`);
+      }
       return;
     }
     router.push("/dashboard");
