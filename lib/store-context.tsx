@@ -24,9 +24,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const load = useCallback(async () => {
     const res = await fetch("/api/session", { cache: "no-store" });
     if (!res.ok) {
-      setProfile(null);
-      setStore(null);
-      setLoading(false);
+      // Stale/invalid session cookie (e.g. the database was reset since this
+      // browser last logged in) — clear it and send back to login instead of
+      // leaving the user stuck on a blank authenticated shell.
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        await fetch("/api/auth/logout", { method: "POST" });
+        window.location.href = "/login";
+      }
       return;
     }
     const data = await res.json();

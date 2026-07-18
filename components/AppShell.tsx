@@ -19,11 +19,13 @@ function Shell({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center text-center px-6">
         <div>
-          <div className="font-display text-lg font-bold mb-2">No store profile found</div>
-          <div className="text-sm text-muted-2 max-w-sm">
-            Your account isn&apos;t linked to a store yet. Ask your manager to run the bootstrap SQL
-            script to link your login to EMIRZ stoRe.
+          <div className="font-display text-lg font-bold mb-2">Signed out</div>
+          <div className="text-sm text-muted-2 max-w-sm mb-4">
+            Your session is no longer valid. Redirecting to login…
           </div>
+          <a href="/login" className="text-sm text-primary font-semibold underline">
+            Click here if you&apos;re not redirected automatically
+          </a>
         </div>
       </div>
     );
