@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store-context";
 import { useRealtimeTable } from "@/lib/hooks/useRealtimeTable";
 import { useSalesWithItems, type SaleWithItems } from "@/lib/hooks/useSalesWithItems";
-import { completeSale } from "@/lib/actions/sales";
+import { completeSale, deleteSale } from "@/lib/actions/sales";
 import { PageHeader } from "@/components/PageHeader";
 import { ReceiptModal } from "@/components/modals/ReceiptModal";
 import { CrateConfirmModal } from "@/components/modals/CrateConfirmModal";
@@ -20,8 +20,9 @@ interface CartLine {
 }
 
 export default function SalesPage() {
-  const { store, tt, fmt } = useStore();
+  const { store, profile, tt, fmt } = useStore();
   const storeId = store?.id;
+  const isManager = profile?.role === "manager";
   const { rows: products } = useRealtimeTable<ProductRow>("products", storeId);
   const { sales } = useSalesWithItems(storeId);
 
@@ -95,6 +96,11 @@ export default function SalesPage() {
   const paidNum = Number(amountPaid) || 0;
   const balancePreview = grandTotalPreview - paidNum;
   const cratedUnitsInCart = cartLines.reduce((a, l) => a + (l.product.category === "Crated" ? l.qty : 0), 0);
+
+  async function onDeleteSale(saleId: string) {
+    if (!window.confirm(tt("deleteSaleConfirm"))) return;
+    await deleteSale(saleId);
+  }
 
   function clearCart() {
     setCart([]);
@@ -281,6 +287,7 @@ export default function SalesPage() {
           onClose={() => setShowHistory(false)}
           onViewReceipt={(sale) => setReceipt(buildReceipt(sale, fmt))}
           onEditSale={(sale) => setEditingSale(sale)}
+          onDeleteSale={isManager ? (sale) => onDeleteSale(sale.id) : undefined}
         />
       )}
 

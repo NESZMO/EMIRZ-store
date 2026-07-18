@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ReceiptModal } from "@/components/modals/ReceiptModal";
 import { SalesHistoryModal } from "@/components/modals/SalesHistoryModal";
 import { EditSaleModal } from "@/components/modals/EditSaleModal";
+import { deleteSale } from "@/lib/actions/sales";
 import { buildReceipt, type ReceiptData } from "@/lib/receipt";
 import { isLowStock, crateOutstanding, isToday, lastNDays, isSameDay, saleProfit, itemsSummary } from "@/lib/domain";
 import { fmtTime } from "@/lib/format";
@@ -33,8 +34,9 @@ function StatCard({ label, value, color, onClick }: { label: string; value: stri
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { store, tt, fmt } = useStore();
+  const { store, profile, tt, fmt } = useStore();
   const storeId = store?.id;
+  const isManager = profile?.role === "manager";
 
   const { rows: products } = useRealtimeTable<ProductRow>("products", storeId);
   const { sales } = useSalesWithItems(storeId);
@@ -99,6 +101,11 @@ export default function DashboardPage() {
   const maxStock = Math.max(1, ...stockMovement.flatMap((s) => [s.inQty, s.outQty]));
 
   const recentTx = sales.slice(0, 3);
+
+  async function onDeleteSale(saleId: string) {
+    if (!window.confirm(tt("deleteSaleConfirm"))) return;
+    await deleteSale(saleId);
+  }
 
   return (
     <div>
@@ -194,6 +201,11 @@ export default function DashboardPage() {
                   <button onClick={() => setEditingSale(tx)} className="text-xs font-bold text-primary cursor-pointer">
                     {tt("edit")}
                   </button>
+                  {isManager && (
+                    <button onClick={() => onDeleteSale(tx.id)} className="text-xs font-bold text-danger cursor-pointer">
+                      {tt("delete")}
+                    </button>
+                  )}
                 </div>
               </div>
             ))
@@ -233,6 +245,7 @@ export default function DashboardPage() {
           onClose={() => setShowHistory(false)}
           onViewReceipt={(sale) => setReceipt(buildReceipt(sale, fmt))}
           onEditSale={(sale) => setEditingSale(sale)}
+          onDeleteSale={isManager ? (sale) => onDeleteSale(sale.id) : undefined}
         />
       )}
 

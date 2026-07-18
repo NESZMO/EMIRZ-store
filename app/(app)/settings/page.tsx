@@ -31,19 +31,31 @@ export default function SettingsPage() {
       .then(setTeammates);
   }, [storeId]);
 
-  const [storeDraft, setStoreDraft] = useState({ name: "", phone: "", address: "", taxRatePct: "" });
+  const [storeDraft, setStoreDraft] = useState({ name: "", phone: "", address: "", taxRatePct: "", crateChargePerUnit: "" });
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [storeMsg, setStoreMsg] = useState("");
 
   useEffect(() => {
     if (!store) return;
-    setStoreDraft({ name: store.name, phone: store.phone, address: store.address, taxRatePct: String(store.tax_rate_pct) });
+    setStoreDraft({
+      name: store.name,
+      phone: store.phone,
+      address: store.address,
+      taxRatePct: String(store.tax_rate_pct),
+      crateChargePerUnit: String(store.crate_deposit_per_unit),
+    });
     setNotificationsEnabled(store.notifications_enabled);
   }, [store]);
 
   async function onSaveStoreInfo() {
     if (!storeId) return;
-    await updateStoreInfo({ name: storeDraft.name, phone: storeDraft.phone, address: storeDraft.address, tax_rate_pct: Number(storeDraft.taxRatePct) || 0 });
+    await updateStoreInfo({
+      name: storeDraft.name,
+      phone: storeDraft.phone,
+      address: storeDraft.address,
+      tax_rate_pct: Number(storeDraft.taxRatePct) || 0,
+      crate_deposit_per_unit: Number(storeDraft.crateChargePerUnit) || 0,
+    });
     setStoreMsg(tt("save") + " ✓");
     setTimeout(() => setStoreMsg(""), 2000);
   }
@@ -144,9 +156,25 @@ export default function SettingsPage() {
           <div className={labelClass}>{tt("taxRateLabel")}</div>
           <input className={`${fieldClass} mb-3.5`} value={storeDraft.taxRatePct} disabled={!isManager} onChange={(e) => setStoreDraft({ ...storeDraft, taxRatePct: e.target.value })} />
           <div className={labelClass}>Currency</div>
-          <div className={`${fieldClass} flex items-center text-text-dim mb-4.5`}>
+          <div className={`${fieldClass} flex items-center text-text-dim mb-3.5`}>
             {store?.currency_symbol} — {tt("currencyLine")}
           </div>
+          <div className={labelClass}>{tt("crateChargeLabel")}</div>
+          <input
+            className={fieldClass}
+            value={storeDraft.crateChargePerUnit}
+            disabled={!isManager}
+            onChange={(e) => setStoreDraft({ ...storeDraft, crateChargePerUnit: e.target.value })}
+          />
+          <div className="text-xs text-muted-3 mt-1.5 mb-2.5">{tt("crateChargeDesc")}</div>
+          {isManager && (
+            <div className="flex items-center gap-2.5 mb-4.5">
+              <button onClick={onSaveStoreInfo} className={primaryBtnClass}>
+                {tt("save")}
+              </button>
+              {storeMsg && <div className="text-xs text-primary font-semibold">{storeMsg}</div>}
+            </div>
+          )}
           <div className="h-px bg-line my-4.5" />
           <div className={`${labelClass} mb-2`}>{tt("languageLabel")}</div>
           <div className="flex gap-2 mb-4.5">

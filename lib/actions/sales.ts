@@ -12,6 +12,13 @@ async function requireUser() {
   return session;
 }
 
+async function requireManager() {
+  const session = await getSession();
+  if (!session) throw new Error("Not signed in.");
+  if (session.user.role !== "manager") throw new Error("Only a manager can do this.");
+  return session;
+}
+
 export interface CartLineInput {
   productId: string;
   name: string;
@@ -53,8 +60,8 @@ export async function completeSale(input: {
   `);
   const deductStock = db.prepare("update products set qty = max(0, qty - ?) where id = ?");
   const insertCrate = db.prepare(`
-    insert into crate_records (id, store_id, customer, product_id, product_name_snapshot, taken, returned, status, created_at)
-    values (?, ?, ?, ?, ?, ?, 0, 'Outstanding', ?)
+    insert into crate_records (id, store_id, sale_id, customer, product_id, product_name_snapshot, taken, returned, status, created_at)
+    values (?, ?, ?, ?, ?, ?, ?, 0, 'Outstanding', ?)
   `);
   const insertPayment = db.prepare(`
     insert into pending_payments (id, store_id, sale_id, customer, phone, products_text, total, paid, balance, due_date, status, created_at)
@@ -87,7 +94,7 @@ export async function completeSale(input: {
       const cratedLines = input.cartLines.filter((l) => l.category === "Crated");
       const productName = cratedLines.length > 1 ? "Mixed crates" : (cratedLines[0]?.name ?? "Crates");
       const productId = cratedLines.length === 1 ? cratedLines[0].productId : null;
-      insertCrate.run(crypto.randomUUID(), store.id, customerName, productId, productName, input.crateUnits, now);
+      insertCrate.run(crypto.randomUUID(), store.id, saleId, customerName, productId, productName, input.crateUnits, now);
     }
 
     if (balance > 0) {
@@ -189,4 +196,37 @@ export async function editSale(input: {
   broadcast("sale_items");
   broadcast("products");
   broadcast("pending_payments");
+}
+
+/**
+ * Cancels a completed sale: restores stock for every line item, removes any
+ * pending-payment and crate record it created, then deletes the sale itself
+ * (sale_items cascade with it). Manager-only — this reverses real inventory
+ * and money-owed state, not just a display row.
+ */
+export async function deleteSale(saleId: string) {
+  await requireManager();
+  const db = getDb();
+
+  const items = db.prepare("select product_id, qty from sale_items where sale_id = ?").all(saleId) as {
+    product_id: string | null;
+    qty: number;
+  }[];
+  const restoreStock = db.prepare("update products set qty = qty + ? where id = ?");
+
+  const tx = db.transaction(() => {
+    for (const item of items) {
+      if (item.product_id) restoreStock.run(item.qty, item.product_id);
+    }
+    db.prepare("delete from pending_payments where sale_id = ?").run(saleId);
+    db.prepare("delete from crate_records where sale_id = ?").run(saleId);
+    db.prepare("delete from sales where id = ?").run(saleId);
+  });
+  tx();
+
+  broadcast("sales");
+  broadcast("sale_items");
+  broadcast("products");
+  broadcast("pending_payments");
+  broadcast("crate_records");
 }

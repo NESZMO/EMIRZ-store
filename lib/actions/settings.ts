@@ -25,11 +25,17 @@ async function requireUser() {
   return session;
 }
 
-export async function updateStoreInfo(patch: { name: string; phone: string; address: string; tax_rate_pct: number }) {
+export async function updateStoreInfo(patch: {
+  name: string;
+  phone: string;
+  address: string;
+  tax_rate_pct: number;
+  crate_deposit_per_unit: number;
+}) {
   const { store } = await requireManager();
   getDb()
-    .prepare("update stores set name = ?, phone = ?, address = ?, tax_rate_pct = ? where id = ?")
-    .run(patch.name, patch.phone, patch.address, patch.tax_rate_pct, store.id);
+    .prepare("update stores set name = ?, phone = ?, address = ?, tax_rate_pct = ?, crate_deposit_per_unit = ? where id = ?")
+    .run(patch.name, patch.phone, patch.address, patch.tax_rate_pct, patch.crate_deposit_per_unit, store.id);
   broadcast("stores");
 }
 

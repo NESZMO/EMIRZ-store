@@ -87,6 +87,7 @@ export interface SaleItemRow {
 export interface CrateRecordRow {
   id: string;
   store_id: string;
+  sale_id: string | null;
   customer: string;
   product_id: string | null;
   product_name_snapshot: string;
