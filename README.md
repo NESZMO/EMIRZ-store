@@ -5,15 +5,14 @@ Local, offline-first store management app for a beverage distribution business �
 ## First-time setup
 
 1. Copy `.env.local.example` to `.env.local` — it already has a random secret filled in, no editing needed unless you want to change it.
-2. Double-click **`run.bat`**. The first run installs dependencies and builds the app (takes a minute or two); every run after that starts instantly.
-3. Once the terminal says "Ready", open **http://localhost:3000** in your browser.
-4. Sign in with the default manager login: **username `manager`, password `emirz123`** — then go to Settings and change the password.
+2. Double-click **`run.bat`** (or the **"EMIRZ stoRe"** shortcut on the Desktop, which does the same thing). The first run installs dependencies and builds the app (takes a minute or two); every run after that starts instantly and opens your browser automatically once it's ready.
+3. Sign in with the default manager login: **username `manager`, password `emirz123`** — then go to Settings and change the password.
 
 That's it — no account to create, no migration to run. The database and its starter products/crates are created automatically the first time the app starts.
 
 ## Day to day
 
-Just double-click `run.bat` and open http://localhost:3000. Keep the terminal window open while using the app; closing it stops the server. Opening the app in a second browser tab (or a second machine on the same network via `http://<this-pc's-LAN-IP>:3000`) is supported and stays in sync.
+Double-click the **"EMIRZ stoRe"** shortcut on the Desktop. It starts minimized and opens your browser to the app automatically once ready. A window stays in the taskbar while it runs — closing it stops the app. Opening the app in a second browser tab (or a second machine on the same network via `http://<this-pc's-LAN-IP>:3000`) is supported and stays in sync.
 
 ## Adding a cashier account
 

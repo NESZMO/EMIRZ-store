@@ -1,5 +1,6 @@
 @echo off
 cd /d "%~dp0"
+title EMIRZ stoRe
 
 if not exist "node_modules" (
   echo Installing dependencies, this only happens once...
@@ -14,8 +15,11 @@ if not exist ".next" (
 )
 
 echo Starting EMIRZ stoRe...
-echo Once it says "Ready", open http://localhost:3000 in your browser.
-echo Keep this window open while you use the app. Close it to stop.
+echo Your browser will open automatically once the app is ready.
+echo Keep this window open while you use the app. Minimize it if you like ^- closing it stops the app.
+
+start "" /min powershell -NoProfile -WindowStyle Hidden -Command "while (-not (Test-NetConnection -ComputerName localhost -Port 3000 -InformationLevel Quiet -WarningAction SilentlyContinue)) { Start-Sleep -Milliseconds 500 }; Start-Process 'http://localhost:3000'"
+
 call npm start
 goto :eof
 
