@@ -100,7 +100,9 @@ export default function DashboardPage() {
   );
   const maxStock = Math.max(1, ...stockMovement.flatMap((s) => [s.inQty, s.outQty]));
 
-  const recentTx = sales.slice(0, 3);
+  // Only today's sales — once a new day starts this resets to empty; older
+  // days are still browsable via the Sales History calendar.
+  const recentTx = todaySales;
 
   async function onDeleteSale(saleId: string) {
     if (!window.confirm(tt("deleteSaleConfirm"))) return;
@@ -180,7 +182,8 @@ export default function DashboardPage() {
           {recentTx.length === 0 ? (
             <div className="py-8 text-center text-muted-5 text-[13px]">{tt("noSalesToday")}</div>
           ) : (
-            recentTx.map((tx) => (
+            <div className="max-h-[520px] overflow-y-auto">
+            {recentTx.map((tx) => (
               <div key={tx.id} className="flex items-center justify-between py-2.5 border-b border-line-soft last:border-0">
                 <div>
                   <div className="text-[13.5px] font-semibold">{tx.customer_name || "Walk-in customer"}</div>
@@ -208,7 +211,8 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-            ))
+            ))}
+            </div>
           )}
         </div>
 
