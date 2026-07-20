@@ -70,6 +70,10 @@ export default function SalesPage() {
     );
   }
 
+  function removeFromCart(id: string) {
+    setCart((c) => c.filter((x) => x.id !== id));
+  }
+
   function setQty(id: string, raw: string) {
     const parsed = parseInt(raw, 10);
     setCart((c) =>
@@ -218,6 +222,13 @@ export default function SalesPage() {
                   </button>
                 </div>
                 <div className="text-[13px] font-bold w-16 text-right">{fmt(l.lineTotal)}</div>
+                <button
+                  onClick={() => removeFromCart(l.id)}
+                  aria-label="Remove from cart"
+                  className="ml-2 w-5 h-5 rounded-[5px] flex items-center justify-center text-danger hover:bg-hover cursor-pointer shrink-0 text-sm"
+                >
+                  ×
+                </button>
               </div>
             ))
           )}
