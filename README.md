@@ -2,6 +2,20 @@
 
 Local, offline-first store management app for a beverage distribution business — inventory, daily sales (POS), crate deposit tracking, incoming stock, pending payments, reports, and settings. Runs entirely on one PC: no internet, no cloud account, no external service. Data lives in a single file (`data/store.db`) on that machine. Every browser tab open against it sees stock and sales changes live via a local real-time bridge.
 
+## Screenshots
+
+| Dashboard | Daily Sales |
+|---|---|
+| ![Dashboard](docs/screenshots/dashboard-wide.png) | ![Daily Sales](docs/screenshots/daily-sales.png) |
+
+| Inventory | Reports |
+|---|---|
+| ![Inventory](docs/screenshots/inventory.png) | ![Reports](docs/screenshots/reports.png) |
+
+| Pending Payments | Settings |
+|---|---|
+| ![Pending Payments](docs/screenshots/pending-payments.png) | ![Settings](docs/screenshots/settings.png) |
+
 ## First-time setup
 
 1. Copy `.env.local.example` to `.env.local` — it already has a random secret filled in, no editing needed unless you want to change it.
