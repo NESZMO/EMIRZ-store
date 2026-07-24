@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# editor/tooling config
+.claude/
+
 # local database (live store data — never commit)
 /data/
 
